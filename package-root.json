@@ -1,0 +1,28 @@
+{
+  "name": "trading-platform",
+  "version": "1.0.0",
+  "description": "Trading platform with backend, quotes and trades services",
+  "main": "server.js",
+  "scripts": {
+    "start": "pm2 start ecosystem.config.js --no-daemon",
+    "dev": "concurrently \"npm run backend:dev\" \"npm run quotes:dev\" \"npm run trades:dev\"",
+    "backend:dev": "cd backend && npm run dev",
+    "quotes:dev": "cd quotes && npm run dev", 
+    "trades:dev": "cd trades && npm run dev",
+    "install:all": "npm install && cd backend && npm install && cd ../quotes && npm install && cd ../trades && npm install",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "postinstall": "npm run install:all"
+  },
+  "dependencies": {
+    "pm2": "^5.3.0",
+    "concurrently": "^8.2.2"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": ["trading", "forex", "crypto", "websocket"],
+  "author": "Your Name",
+  "license": "MIT"
+}

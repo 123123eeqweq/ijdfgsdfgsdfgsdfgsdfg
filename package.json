@@ -1,0 +1,46 @@
+{
+  "name": "vsepoluchitsa-backend",
+  "version": "1.0.0",
+  "description": "Backend API для торгового терминала",
+  "main": "server.js",
+  "scripts": {
+    "start": "pm2 start ecosystem.config.js --no-daemon",
+    "backend": "node server.js",
+    "backend:dev": "nodemon server.js",
+    "quotes": "node start-quotes.js",
+    "trades": "node tradesRelay.js",
+    "all": "concurrently \"npm run backend\" \"npm run quotes\" \"npm run trades\"",
+    "polygon": "node polygonListener.js",
+    "polygon:dev": "nodemon polygonListener.js",
+    "relay": "node polygonRelay.js",
+    "relay:dev": "nodemon polygonRelay.js",
+    "polygon-crypto": "node polygonCryptoListener.js",
+    "polygon-crypto:dev": "nodemon polygonCryptoListener.js",
+    "crypto-relay": "node polygonCryptoRelay.js",
+    "crypto-relay:dev": "nodemon polygonCryptoRelay.js",
+    "otc": "node otcListener.js",
+    "otc:dev": "nodemon otcListener.js",
+    "otc-relay": "node otcRelay.js",
+    "otc-relay:dev": "nodemon otcRelay.js",
+    "add-balance": "node addBalance.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.1.5",
+    "jsonwebtoken": "^9.0.2",
+    "moment": "^2.30.1",
+    "moment-timezone": "^0.6.0",
+    "mongoose": "^7.8.7",
+    "node-fetch": "^3.3.2",
+    "ntp-client": "^0.5.3",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10",
+    "concurrently": "^8.2.2",
+    "pm2": "^5.3.0"
+  }
+}
