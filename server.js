@@ -12,6 +12,9 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Auth middleware
+const verifyToken = require('./middleware/auth');
+
 // Routes
 const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);
@@ -28,6 +31,36 @@ app.use('/api/otc-candles', otcCandlesRoutes);
 // ✅ НОВЫЕ БЕЗОПАСНЫЕ роуты для торговли
 const tradesRoutes = require('./routes/trades');
 app.use('/api/trades', tradesRoutes);
+
+// 🎯 Эндпоинт для восстановления демо счета
+app.post('/api/restore-demo-balance', verifyToken, async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID required' });
+    }
+
+    const User = require('./models/User');
+    const result = await User.updateOne(
+      { _id: userId },
+      { $set: { demoBalance: 10000 } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({ error: 'User not found or balance not changed' });
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Demo balance restored to $10,000',
+      newBalance: 10000
+    });
+  } catch (error) {
+    console.error('Error restoring demo balance:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 // 🚀 НОВОЕ: Эндпоинт для мониторинга PriceService кэша
 const PriceService = require('./services/PriceService');

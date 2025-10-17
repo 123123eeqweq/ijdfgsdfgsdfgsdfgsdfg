@@ -44,8 +44,8 @@ class PriceService {
       }
     });
 
-    // Polygon Forex WebSocket (порт 8081) - если есть
-    this.connectToWebSocket('polygon', 'ws://localhost:8081', (message) => {
+    // Polygon Forex WebSocket (порт 8080) ✅ ИСПРАВЛЕНО!
+    this.connectToWebSocket('polygon', 'ws://localhost:8080', (message) => {
       if (message.ev === 'CAS' && message.pair && message.c) {
         // Polygon приходит как "EURUSD" → кэшируем как "EUR/USD"
         const formattedPair = this.formatPolygonPair(message.pair);
@@ -57,8 +57,8 @@ class PriceService {
       }
     });
 
-    // Polygon Crypto WebSocket (порт 8083) - если есть
-    this.connectToWebSocket('polygonCrypto', 'ws://localhost:8083', (message) => {
+    // Polygon Crypto WebSocket (порт 8081) ✅ ИСПРАВЛЕНО!
+    this.connectToWebSocket('polygonCrypto', 'ws://localhost:8081', (message) => {
       if (message.ev === 'XAS' && message.pair && message.c) {
         // Crypto приходит как "BTC-USD" → кэшируем как "BTC/USD"
         const formattedPair = message.pair.replace('-', '/');
@@ -177,7 +177,7 @@ class PriceService {
         // Forex пары
         const cleanPair = pair.replace('/', '');
         candle = await PolygonCandle.findOne({ pair: cleanPair })
-          .sort({ timestamp: -1 })
+          .sort({ startTime: -1 }) // ✅ ИСПРАВЛЕНО: используем startTime вместо timestamp
           .limit(1);
         source = 'Polygon Forex';
       }
@@ -237,6 +237,19 @@ class PriceService {
    */
   async getPriceAtTime(pair, timestamp, toleranceMs = 5000) {
     try {
+      // 🔥 ЗАЩИТА: Проверяем валидность timestamp
+      const now = Date.now();
+      const ONE_YEAR = 365 * 24 * 60 * 60 * 1000;
+      
+      if (timestamp > now + ONE_YEAR) {
+        console.warn(`⚠️ Подозрительный timestamp для ${pair}: ${timestamp} (${new Date(timestamp).toISOString()}), используем текущее время`);
+        timestamp = now;
+      }
+      
+      if (timestamp < now - 30 * 24 * 60 * 60 * 1000) { // Старше 30 дней
+        console.warn(`⚠️ Очень старый timestamp для ${pair}: ${timestamp} (${new Date(timestamp).toISOString()})`);
+      }
+
       let candle;
       let source;
 
@@ -255,6 +268,15 @@ class PriceService {
           .sort({ startTime: -1 })
           .limit(1);
         source = 'OTC';
+        
+        // 🚀 FALLBACK: Если не нашли в допуске, ищем ближайшую доступную
+        if (!candle) {
+          console.warn(`⚠️ Нет данных для ${pair} в допуске ±${toleranceMs}ms, ищем ближайшую свечу...`);
+          candle = await OtcCandle.findOne({ pair: cleanPair })
+            .sort({ startTime: -1 })
+            .limit(1);
+          source = 'OTC (fallback - последняя доступная)';
+        }
       } else if (pair.includes('BTC') || pair.includes('ETH') || pair.includes('LTC') || pair.includes('XRP') || pair.includes('ADA') || pair.includes('SOL')) {
         const cleanPair = pair.replace('/', '-');
         candle = await PolygonCryptoCandle.findOne({
@@ -267,22 +289,53 @@ class PriceService {
           .sort({ startTime: -1 })
           .limit(1);
         source = 'Polygon Crypto';
+        
+        // 🚀 FALLBACK
+        if (!candle) {
+          console.warn(`⚠️ Нет данных для ${pair} в допуске ±${toleranceMs}ms, ищем ближайшую свечу...`);
+          candle = await PolygonCryptoCandle.findOne({ pair: cleanPair })
+            .sort({ startTime: -1 })
+            .limit(1);
+          source = 'Polygon Crypto (fallback - последняя доступная)';
+        }
       } else {
         const cleanPair = pair.replace('/', '');
         candle = await PolygonCandle.findOne({
           pair: cleanPair,
-          timestamp: {
+          startTime: { // ✅ ИСПРАВЛЕНО: используем startTime вместо timestamp
             $gte: timestamp - toleranceMs,
             $lte: timestamp + toleranceMs
           }
         })
-          .sort({ timestamp: -1 })
+          .sort({ startTime: -1 }) // ✅ ИСПРАВЛЕНО: используем startTime вместо timestamp
           .limit(1);
         source = 'Polygon Forex';
+        
+        // 🚀 FALLBACK
+        if (!candle) {
+          console.warn(`⚠️ Нет данных для ${pair} в допуске ±${toleranceMs}ms, ищем ближайшую свечу...`);
+          candle = await PolygonCandle.findOne({ pair: cleanPair })
+            .sort({ startTime: -1 }) // ✅ ИСПРАВЛЕНО: используем startTime вместо timestamp
+            .limit(1);
+          source = 'Polygon Forex (fallback - последняя доступная)';
+        }
       }
 
       if (!candle) {
-        throw new Error(`Нет данных для ${pair} на момент ${new Date(timestamp).toISOString()}`);
+        // 🚀 КРАЙНИЙ FALLBACK: Пытаемся получить текущую цену
+        console.warn(`⚠️ Нет исторических данных для ${pair}, пытаемся получить текущую цену...`);
+        try {
+          const currentPrice = await this.getCurrentPrice(pair);
+          return {
+            price: currentPrice.price,
+            timestamp: currentPrice.timestamp,
+            source: currentPrice.source + ' (fallback - текущая цена)',
+            timeDiff: Math.abs(currentPrice.timestamp - timestamp),
+            warning: 'Использована текущая цена вместо исторической'
+          };
+        } catch (fallbackError) {
+          throw new Error(`Нет данных для ${pair} на момент ${new Date(timestamp).toISOString()} и не удалось получить текущую цену`);
+        }
       }
 
       // 🔥 ЗАЩИТА: Проверяем валидность цены
@@ -292,12 +345,18 @@ class PriceService {
 
       // OTC использует startTime, остальные - timestamp
       const candleTimestamp = candle.startTime || candle.timestamp;
+      const timeDiff = Math.abs(candleTimestamp - timestamp);
+      
+      // Предупреждаем если разница большая
+      if (timeDiff > toleranceMs) {
+        console.warn(`⚠️ Большая разница во времени для ${pair}: ${Math.round(timeDiff / 1000)}s (допуск: ${toleranceMs / 1000}s)`);
+      }
 
       return {
         price: candle.close,
         timestamp: candleTimestamp,
         source,
-        timeDiff: Math.abs(candleTimestamp - timestamp)
+        timeDiff
       };
     } catch (error) {
       console.error(`❌ Ошибка получения цены для ${pair} на момент ${timestamp}:`, error);
@@ -342,7 +401,7 @@ class PriceService {
       // OTC Forex (20 основных пар)
       'EUR/USD OTC', 'AUD/CAD OTC', 'USD/JPY OTC', 'AUD/JPY OTC', 'GBP/USD OTC', 'GBP/CAD OTC', 'EUR/CAD OTC', 'CHF/JPY OTC', 'CAD/CHF OTC', 'USD/CHF OTC', 'USD/CAD OTC', 'GBP/AUD OTC', 'AUD/CHF OTC', 'EUR/CHF OTC', 'GBP/CHF OTC', 'CAD/JPY OTC', 'EUR/JPY OTC', 'GBP/JPY OTC', 'EUR/GBP OTC', 'AUD/USD OTC',
       // OTC Forex (30 дополнительных пар)
-      'USD/UAH OTC', 'USD/RUB OTC', 'NZD/USD OTC', 'EUR/AUD OTC', 'NZD/JPY OTC', 'AUD/NZD OTC', 'EUR/NZD OTC', 'GBP/NZD OTC', 'NZD/CHF OTC', 'NZD/CAD OTC', 'USD/SGD OTC', 'EUR/SGD OTC', 'GBP/SGD OTC', 'USD/HKD OTC', 'EUR/HKD OTC', 'GBP/HKD OTC', 'USD/CNY OTC', 'EUR/CNY OTC', 'GBP/CNY OTC', 'USD/INR OTC', 'EUR/INR OTC', 'GBP/INR OTC', 'EUR/RUB OTC', 'GBP/RUB OTC', 'EUR/UAH OTC', 'GBP/UAH OTC', 'USD/ZAR OTC', 'EUR/ZAR OTC', 'GBP/ZAR OTC', 'USD/MXN OTC',
+      'USD/UAH OTC', 'USD/RUB OTC', 'NZD/USD OTC', 'EUR/AUD OTC', 'NZD/JPY OTC', 'AUD/NZD OTC', 'EUR/NZD OTC', 'GBP/NZD OTC', 'NZD/CHF OTC', 'NZD/CAD OTC', 'USD/CNY OTC', 'EUR/CNY OTC', 'GBP/CNY OTC', 'USD/INR OTC', 'EUR/INR OTC', 'GBP/INR OTC', 'EUR/RUB OTC', 'GBP/RUB OTC', 'EUR/UAH OTC', 'GBP/UAH OTC', 'USD/MXN OTC',
       // OTC Crypto (10 пар)
       'BTC/USD OTC', 'ETH/USD OTC', 'LTC/USD OTC', 'XRP/USD OTC', 'SOL/USD OTC', 'ADA/USD OTC', 'DOT/USD OTC', 'MATIC/USD OTC', 'AVAX/USD OTC', 'LINK/USD OTC',
       // Forex (20 пар)

@@ -17,13 +17,13 @@ const User = require('../models/User');
 const auth = require('../middleware/auth');
 const PriceService = require('../services/PriceService');
 
-// 🔥 Rate Limiting - защита от спама
+// 🔥 Rate Limiting - защита от спама (смягченный для комфортного тестирования)
 let createTradeLimit;
 try {
   const rateLimit = require('express-rate-limit');
   createTradeLimit = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 минута
-    max: 10, // Максимум 10 сделок в минуту
+    max: 100, // Максимум 100 сделок в минуту (увеличено с 10 для комфортной работы)
     message: {
       success: false,
       error: 'Слишком много запросов. Попробуйте через минуту.'
@@ -168,12 +168,12 @@ router.post('/create', auth, createTradeLimit, async (req, res) => {
 
     // Проверка суммы
     console.log('🔍 Проверка суммы:', amount, typeof amount);
-    if (typeof amount !== 'number' || amount < 1 || amount > 10000) {
+    if (typeof amount !== 'number' || amount < 1 || amount > 900000) {
       console.error('❌ Валидация: некорректная сумма', { amount, type: typeof amount });
       await session.abortTransaction();
       return res.status(400).json({
         success: false,
-        error: 'Сумма должна быть от $1 до $10,000',
+        error: 'Сумма должна быть от $1 до $900,000',
         details: { amount, type: typeof amount }
       });
     }

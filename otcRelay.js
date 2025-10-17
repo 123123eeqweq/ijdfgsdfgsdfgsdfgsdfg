@@ -262,42 +262,6 @@ const OTC_CONFIG = {
     current: 0.85,
     volatility: 0.00005
   },
-  'USD/SGD': {
-    min: 1.34,
-    max: 1.36,
-    current: 1.35,
-    volatility: 0.00005 // Сингапурский доллар
-  },
-  'EUR/SGD': {
-    min: 1.55,
-    max: 1.57,
-    current: 1.56,
-    volatility: 0.00005
-  },
-  'GBP/SGD': {
-    min: 1.83,
-    max: 1.85,
-    current: 1.84,
-    volatility: 0.00005
-  },
-  'USD/HKD': {
-    min: 7.82,
-    max: 7.84,
-    current: 7.83,
-    volatility: 0.00005 // Гонконгский доллар
-  },
-  'EUR/HKD': {
-    min: 9.05,
-    max: 9.07,
-    current: 9.06,
-    volatility: 0.00005
-  },
-  'GBP/HKD': {
-    min: 10.68,
-    max: 10.70,
-    current: 10.69,
-    volatility: 0.00005
-  },
   'USD/CNY': {
     min: 7.25,
     max: 7.27,
@@ -358,24 +322,6 @@ const OTC_CONFIG = {
     current: 48.3,
     volatility: 0.05
   },
-  'USD/ZAR': {
-    min: 18.5,
-    max: 19.0,
-    current: 18.75,
-    volatility: 0.05 // Южноафриканский рэнд
-  },
-  'EUR/ZAR': {
-    min: 21.4,
-    max: 21.9,
-    current: 21.65,
-    volatility: 0.05
-  },
-  'GBP/ZAR': {
-    min: 25.3,
-    max: 25.8,
-    current: 25.55,
-    volatility: 0.05
-  },
   'USD/MXN': {
     min: 17.2,
     max: 17.4,
@@ -429,12 +375,6 @@ let currentPrices = {
   'GBP/NZD': OTC_CONFIG['GBP/NZD'].current,
   'NZD/CHF': OTC_CONFIG['NZD/CHF'].current,
   'NZD/CAD': OTC_CONFIG['NZD/CAD'].current,
-  'USD/SGD': OTC_CONFIG['USD/SGD'].current,
-  'EUR/SGD': OTC_CONFIG['EUR/SGD'].current,
-  'GBP/SGD': OTC_CONFIG['GBP/SGD'].current,
-  'USD/HKD': OTC_CONFIG['USD/HKD'].current,
-  'EUR/HKD': OTC_CONFIG['EUR/HKD'].current,
-  'GBP/HKD': OTC_CONFIG['GBP/HKD'].current,
   'USD/CNY': OTC_CONFIG['USD/CNY'].current,
   'EUR/CNY': OTC_CONFIG['EUR/CNY'].current,
   'GBP/CNY': OTC_CONFIG['GBP/CNY'].current,
@@ -445,9 +385,6 @@ let currentPrices = {
   'GBP/RUB': OTC_CONFIG['GBP/RUB'].current,
   'EUR/UAH': OTC_CONFIG['EUR/UAH'].current,
   'GBP/UAH': OTC_CONFIG['GBP/UAH'].current,
-  'USD/ZAR': OTC_CONFIG['USD/ZAR'].current,
-  'EUR/ZAR': OTC_CONFIG['EUR/ZAR'].current,
-  'GBP/ZAR': OTC_CONFIG['GBP/ZAR'].current,
   'USD/MXN': OTC_CONFIG['USD/MXN'].current
 };
 

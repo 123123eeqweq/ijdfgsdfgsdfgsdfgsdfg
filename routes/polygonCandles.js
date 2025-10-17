@@ -13,7 +13,10 @@ router.get('/', async (req, res) => {
       tf = 's5'       // Целевой таймфрейм для агрегации (s5, s10, s15, s30, m1, m5, m15)
     } = req.query;
     
-    console.log(`📊 Запрос свечей: pair=${pair}, limit=${limit}, tf=${tf}`);
+    // 🔧 ИСПРАВЛЕНИЕ: Убираем слэш из пары для MongoDB (EUR/USD → EURUSD)
+    const cleanPair = pair.replace('/', '');
+    
+    console.log(`📊 Запрос свечей: pair=${pair} → ${cleanPair}, limit=${limit}, tf=${tf}`);
     
     // Проверяем поддерживается ли таймфрейм
     if (!isSupportedTimeframe(tf)) {
@@ -29,7 +32,7 @@ router.get('/', async (req, res) => {
     // 🚀 ОПТИМИЗАЦИЯ: Если tf=s5, просто возвращаем без агрегации
     if (tf === 's5') {
       const closedCandles = await PolygonCandle.find({ 
-        pair,
+        pair: cleanPair,
         timeframe: Number(timeframe),
         isClosed: true
       })
@@ -38,7 +41,7 @@ router.get('/', async (req, res) => {
         .lean(); // ← Быстрее чем toObject()
       
       const activeCandle = await PolygonCandle.findOne({
-        pair,
+        pair: cleanPair,
         timeframe: Number(timeframe),
         isClosed: false
       })
@@ -76,7 +79,7 @@ router.get('/', async (req, res) => {
       // Фильтр по паре и закрытым свечам
       { 
         $match: { 
-          pair: pair,
+          pair: cleanPair,
           timeframe: Number(timeframe),
           isClosed: true
         }
@@ -150,7 +153,7 @@ router.get('/', async (req, res) => {
     
     // 2. Получаем активную свечу отдельно
     const activeCandle = await PolygonCandle.findOne({
-      pair,
+      pair: cleanPair,
       timeframe: Number(timeframe),
       isClosed: false
     })
@@ -162,7 +165,7 @@ router.get('/', async (req, res) => {
     
     // 🔥 Если данных нет
     if (aggregatedClosed.length === 0 && !activeCandle) {
-      console.warn(`⚠️ Нет данных для пары ${pair} в БД`);
+      console.warn(`⚠️ Нет данных для пары ${pair} (${cleanPair}) в БД`);
       return res.json({
         success: true,
         data: [],

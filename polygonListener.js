@@ -122,7 +122,7 @@ ws.on('message', (data) => {
           const previousClose = currentCandle ? currentCandle.close : msg.o;
           
           currentCandle = {
-            pair: pairName,
+            pair: pairName.replace('/', ''), // 🔥 Убираем слэш для совместимости с PriceService
             open: previousClose,
             close: msg.c,
             high: Math.max(previousClose, msg.h),
