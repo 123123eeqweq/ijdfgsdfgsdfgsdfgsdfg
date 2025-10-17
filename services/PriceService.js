@@ -31,8 +31,14 @@ class PriceService {
    * 🚀 НОВОЕ: Инициализация WebSocket подключений для real-time цен
    */
   initializeWebSockets() {
-    // OTC WebSocket (порт 8082)
-    this.connectToWebSocket('otc', 'ws://localhost:8082', (message) => {
+    // WebSocket URLs из env переменных (для Railway) или localhost (для локальной разработки)
+    const QUOTES_WS_URL = process.env.QUOTES_WS_URL || 'ws://localhost:8080';
+    
+    console.log('🔌 PriceService: Инициализация WebSocket подключений...');
+    console.log(`   📡 Quotes WebSocket: ${QUOTES_WS_URL}`);
+    
+    // OTC WebSocket - все идут через один Quotes сервис
+    this.connectToWebSocket('otc', QUOTES_WS_URL, (message) => {
       if (message.ev === 'OTC' && message.pair && message.c) {
         // Кэшируем как "EUR/USD OTC"
         const cacheKey = `${message.pair} OTC`;
@@ -44,8 +50,8 @@ class PriceService {
       }
     });
 
-    // Polygon Forex WebSocket (порт 8080) ✅ ИСПРАВЛЕНО!
-    this.connectToWebSocket('polygon', 'ws://localhost:8080', (message) => {
+    // Polygon Forex WebSocket - все идут через один Quotes сервис
+    this.connectToWebSocket('polygon', QUOTES_WS_URL, (message) => {
       if (message.ev === 'CAS' && message.pair && message.c) {
         // Polygon приходит как "EURUSD" → кэшируем как "EUR/USD"
         const formattedPair = this.formatPolygonPair(message.pair);
@@ -57,8 +63,8 @@ class PriceService {
       }
     });
 
-    // Polygon Crypto WebSocket (порт 8081) ✅ ИСПРАВЛЕНО!
-    this.connectToWebSocket('polygonCrypto', 'ws://localhost:8081', (message) => {
+    // Polygon Crypto WebSocket - все идут через один Quotes сервис
+    this.connectToWebSocket('polygonCrypto', QUOTES_WS_URL, (message) => {
       if (message.ev === 'XAS' && message.pair && message.c) {
         // Crypto приходит как "BTC-USD" → кэшируем как "BTC/USD"
         const formattedPair = message.pair.replace('-', '/');
@@ -69,8 +75,6 @@ class PriceService {
         });
       }
     });
-
-    console.log('🔌 PriceService: Инициализация WebSocket подключений...');
   }
 
   /**
