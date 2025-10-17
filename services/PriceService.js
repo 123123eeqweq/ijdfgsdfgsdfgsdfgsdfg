@@ -31,7 +31,14 @@ class PriceService {
    * 🚀 НОВОЕ: Инициализация WebSocket подключений для real-time цен
    */
   initializeWebSockets() {
-    // WebSocket URLs из env переменных (для Railway) или localhost (для локальной разработки)
+    // ✅ ОТКЛЮЧЕНО для Render: Backend НЕ подключается к Quotes WebSocket
+    // Quotes сервис сам отправляет данные напрямую клиентам
+    // PriceService теперь использует ТОЛЬКО MongoDB (fallback)
+    
+    console.log('🔌 PriceService: WebSocket подключения отключены (используется Unified Quotes Server)');
+    return;
+    
+    // Старый код (отключен):
     const QUOTES_WS_URL = process.env.QUOTES_WS_URL || 'ws://localhost:8080';
     
     console.log('🔌 PriceService: Инициализация WebSocket подключений...');
