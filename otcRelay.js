@@ -8,10 +8,12 @@ const WS_PORT = 8082; // Порт для OTC
 // Создаём WebSocket сервер (ретранслятор)
 const wss = new WebSocket.Server({ port: WS_PORT });
 
-// Подключенные клиенты
+// 🏠 ROOM-BASED АРХИТЕКТУРА
 const clients = new Set();
+const rooms = new Map();
+const clientRooms = new Map();
 
-console.log(`🔷 OTC Relay запущен на порту ${WS_PORT}`);
+console.log(`🔷 OTC Relay запущен на порту ${WS_PORT} (Room-based)`);
 console.log(`📡 Генератор OTC котировок активирован...`);
 
 // Конфигурация для 20 OTC пар
@@ -440,6 +442,50 @@ setInterval(() => {
   });
 }, 1000); // Каждую секунду
 
+// 🏠 ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ КОМНАТАМИ
+function subscribeClientToPair(client, pair) {
+  if (!rooms.has(pair)) {
+    rooms.set(pair, new Set());
+  }
+  rooms.get(pair).add(client);
+  
+  if (!clientRooms.has(client)) {
+    clientRooms.set(client, new Set());
+  }
+  clientRooms.get(client).add(pair);
+  
+  console.log(`📌 Клиент подписался на ${pair}. В комнате: ${rooms.get(pair).size} клиентов`);
+}
+
+function unsubscribeClientFromPair(client, pair) {
+  if (rooms.has(pair)) {
+    rooms.get(pair).delete(client);
+    if (rooms.get(pair).size === 0) {
+      rooms.delete(pair);
+    }
+  }
+  
+  if (clientRooms.has(client)) {
+    clientRooms.get(client).delete(pair);
+  }
+  
+  console.log(`📍 Клиент отписался от ${pair}`);
+}
+
+function unsubscribeClientFromAll(client) {
+  const pairs = clientRooms.get(client) || new Set();
+  pairs.forEach(pair => {
+    if (rooms.has(pair)) {
+      rooms.get(pair).delete(client);
+      if (rooms.get(pair).size === 0) {
+        rooms.delete(pair);
+      }
+    }
+  });
+  
+  clientRooms.delete(client);
+}
+
 // Когда клиент подключается к нашему серверу
 wss.on('connection', (ws) => {
   console.log(`✅ Клиент подключился. Всего клиентов: ${clients.size + 1}`);
@@ -452,8 +498,26 @@ wss.on('connection', (ws) => {
     message: 'OTC Relay готов',
     pairs: Object.keys(OTC_CONFIG)
   }));
+  
+  // 🏠 ОБРАБОТКА СООБЩЕНИЙ ОТ КЛИЕНТА
+  ws.on('message', (data) => {
+    try {
+      const msg = JSON.parse(data.toString());
+      
+      if (msg.action === 'subscribe' && msg.pair) {
+        subscribeClientToPair(ws, msg.pair);
+        ws.send(JSON.stringify({ ev: 'status', message: `Subscribed to ${msg.pair}` }));
+      } else if (msg.action === 'unsubscribe' && msg.pair) {
+        unsubscribeClientFromPair(ws, msg.pair);
+        ws.send(JSON.stringify({ ev: 'status', message: `Unsubscribed from ${msg.pair}` }));
+      }
+    } catch (err) {
+      console.error('Ошибка обработки сообщения от клиента:', err.message);
+    }
+  });
 
   ws.on('close', () => {
+    unsubscribeClientFromAll(ws);
     clients.delete(ws);
     console.log(`🔴 Клиент отключился. Осталось клиентов: ${clients.size}`);
   });
@@ -463,11 +527,28 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Функция для отправки сообщения всем клиентам
+// 🏠 ROOM-BASED: Отправка только подписанным
 function broadcastToClients(message) {
-  const data = JSON.stringify(message);
+  const pair = message.pair;
   
-  clients.forEach((client) => {
+  if (!pair) {
+    const data = JSON.stringify(message);
+    clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(data);
+      }
+    });
+    return;
+  }
+  
+  const subscribedClients = rooms.get(pair);
+  
+  if (!subscribedClients || subscribedClients.size === 0) {
+    return;
+  }
+  
+  const data = JSON.stringify(message);
+  subscribedClients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(data);
     }

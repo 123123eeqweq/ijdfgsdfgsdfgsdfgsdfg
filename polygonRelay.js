@@ -14,10 +14,12 @@ let isPolygonConnected = false;
 // Создаём наш WebSocket сервер (ретранслятор)
 const wss = new WebSocket.Server({ port: WS_PORT });
 
-// Подключенные клиенты
-const clients = new Set();
+// 🏠 ROOM-BASED АРХИТЕКТУРА
+const clients = new Set(); // Все подключенные клиенты
+const rooms = new Map(); // Map<pairName, Set<client>> - какие клиенты подписаны на какую пару
+const clientRooms = new Map(); // Map<client, Set<pairName>> - на что подписан каждый клиент
 
-console.log(`🔷 Polygon Relay запущен на порту ${WS_PORT}`);
+console.log(`🔷 Polygon Relay запущен на порту ${WS_PORT} (Room-based)`);
 console.log(`📡 Подключение к Polygon Forex...`);
 
 // Функция подключения к Polygon (единственное место!)
@@ -76,6 +78,55 @@ function connectToPolygon() {
 // Запускаем подключение к Polygon
 connectToPolygon();
 
+// 🏠 ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ КОМНАТАМИ
+function subscribeClientToPair(client, pair) {
+  // Добавляем клиента в комнату пары
+  if (!rooms.has(pair)) {
+    rooms.set(pair, new Set());
+  }
+  rooms.get(pair).add(client);
+  
+  // Отслеживаем подписки клиента
+  if (!clientRooms.has(client)) {
+    clientRooms.set(client, new Set());
+  }
+  clientRooms.get(client).add(pair);
+  
+  console.log(`📌 Клиент подписался на ${pair}. В комнате: ${rooms.get(pair).size} клиентов`);
+}
+
+function unsubscribeClientFromPair(client, pair) {
+  // Удаляем клиента из комнаты
+  if (rooms.has(pair)) {
+    rooms.get(pair).delete(client);
+    if (rooms.get(pair).size === 0) {
+      rooms.delete(pair);
+    }
+  }
+  
+  // Удаляем из отслеживания
+  if (clientRooms.has(client)) {
+    clientRooms.get(client).delete(pair);
+  }
+  
+  console.log(`📍 Клиент отписался от ${pair}`);
+}
+
+function unsubscribeClientFromAll(client) {
+  // Удаляем клиента из всех комнат
+  const pairs = clientRooms.get(client) || new Set();
+  pairs.forEach(pair => {
+    if (rooms.has(pair)) {
+      rooms.get(pair).delete(client);
+      if (rooms.get(pair).size === 0) {
+        rooms.delete(pair);
+      }
+    }
+  });
+  
+  clientRooms.delete(client);
+}
+
 // Когда клиент подключается к нашему серверу
 wss.on('connection', (ws) => {
   console.log(`✅ Клиент подключился. Всего клиентов: ${clients.size + 1}`);
@@ -87,8 +138,26 @@ wss.on('connection', (ws) => {
     status: isPolygonConnected ? 'relay_ready' : 'relay_connecting',
     message: isPolygonConnected ? 'Relay готов' : 'Подключение к Polygon...'
   }));
+  
+  // 🏠 ОБРАБОТКА СООБЩЕНИЙ ОТ КЛИЕНТА (subscribe/unsubscribe)
+  ws.on('message', (data) => {
+    try {
+      const msg = JSON.parse(data.toString());
+      
+      if (msg.action === 'subscribe' && msg.pair) {
+        subscribeClientToPair(ws, msg.pair);
+        ws.send(JSON.stringify({ ev: 'status', message: `Subscribed to ${msg.pair}` }));
+      } else if (msg.action === 'unsubscribe' && msg.pair) {
+        unsubscribeClientFromPair(ws, msg.pair);
+        ws.send(JSON.stringify({ ev: 'status', message: `Unsubscribed from ${msg.pair}` }));
+      }
+    } catch (err) {
+      console.error('Ошибка обработки сообщения от клиента:', err.message);
+    }
+  });
 
   ws.on('close', () => {
+    unsubscribeClientFromAll(ws);
     clients.delete(ws);
     console.log(`🔴 Клиент отключился. Осталось клиентов: ${clients.size}`);
   });
@@ -98,12 +167,41 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Функция для отправки сообщения всем клиентам
+// 🏠 ROOM-BASED: Отправка сообщения только подписанным клиентам
 function broadcastToClients(message) {
+  // Определяем пару из сообщения
+  const pair = message.p; // Polygon присылает пару в поле 'p'
+  
+  if (!pair) {
+    // Если нет пары - отправляем всем (статусные сообщения)
+    const data = JSON.stringify(message);
+    clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(data);
+      }
+    });
+    return;
+  }
+  
+  // 🔥 КОНСИСТЕНТНОСТЬ: Добавляем поле 'pair' для обратной совместимости
+  // Polygon присылает 'p', но мы также добавляем 'pair' для единообразия
+  if (!message.pair && message.p) {
+    message.pair = message.p;
+  }
+  
+  // Получаем клиентов подписанных на эту пару
+  const subscribedClients = rooms.get(pair);
+  
+  if (!subscribedClients || subscribedClients.size === 0) {
+    // Никто не подписан на эту пару - не отправляем
+    return;
+  }
+  
+  // Отправляем только подписанным
   const data = JSON.stringify(message);
   let sentCount = 0;
   
-  clients.forEach((client) => {
+  subscribedClients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(data);
       sentCount++;

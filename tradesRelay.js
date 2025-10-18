@@ -24,7 +24,7 @@ const EventEmitter = require('events');
 // 🔥 Event Emitter для in-process communication
 const internalEmitter = new EventEmitter();
 
-const PORT = process.env.PORT || process.env.TRADES_WS_PORT || 8083;
+const PORT = process.env.TRADES_PORT || process.env.TRADES_WS_PORT || 8083;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Хранилище активных соединений по userId

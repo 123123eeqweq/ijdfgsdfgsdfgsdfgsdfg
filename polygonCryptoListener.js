@@ -61,7 +61,22 @@ console.log('Подключение к Crypto Relay...\n');
 const ws = new WebSocket(RELAY_URL);
 
 ws.on('open', () => {
-  console.log('✅ Подключено к Crypto Relay\n');
+  console.log('✅ Подключено к Crypto Relay');
+  
+  // 🏠 ROOM-BASED: Подписываемся на ВСЕ 10 Crypto пар
+  const cryptoPairs = [
+    'BTC-USD', 'ETH-USD', 'LTC-USD', 'XRP-USD', 'SOL-USD',
+    'ADA-USD', 'DOT-USD', 'MATIC-USD', 'AVAX-USD', 'LINK-USD'
+  ];
+  
+  cryptoPairs.forEach(pair => {
+    ws.send(JSON.stringify({
+      action: 'subscribe',
+      pair: pair
+    }));
+  });
+  
+  console.log('📌 Listener подписался на', cryptoPairs.length, 'Crypto пар для сохранения в БД\n');
 });
 
 ws.on('message', (data) => {

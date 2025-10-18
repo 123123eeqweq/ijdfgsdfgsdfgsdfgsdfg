@@ -61,7 +61,24 @@ console.log('Подключение к Relay...\n');
 const ws = new WebSocket(RELAY_URL);
 
 ws.on('open', () => {
-  console.log('✅ Подключено к Relay\n');
+  console.log('✅ Подключено к Relay');
+  
+  // 🏠 ROOM-BASED: Подписываемся на ВСЕ 20 Forex пар
+  const forexPairs = [
+    'EUR/USD', 'AUD/CAD', 'USD/JPY', 'AUD/JPY', 'GBP/USD',
+    'GBP/CAD', 'EUR/CAD', 'CHF/JPY', 'CAD/CHF', 'USD/CHF',
+    'USD/CAD', 'GBP/AUD', 'AUD/CHF', 'EUR/CHF', 'GBP/CHF',
+    'CAD/JPY', 'EUR/JPY', 'GBP/JPY', 'EUR/GBP', 'AUD/JPY'
+  ];
+  
+  forexPairs.forEach(pair => {
+    ws.send(JSON.stringify({
+      action: 'subscribe',
+      pair: pair
+    }));
+  });
+  
+  console.log('📌 Listener подписался на', forexPairs.length, 'Forex пар для сохранения в БД\n');
 });
 
 ws.on('message', (data) => {

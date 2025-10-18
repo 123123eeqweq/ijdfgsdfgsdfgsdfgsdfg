@@ -31,14 +31,7 @@ class PriceService {
    * 🚀 НОВОЕ: Инициализация WebSocket подключений для real-time цен
    */
   initializeWebSockets() {
-    // ✅ ОТКЛЮЧЕНО для Render: Backend НЕ подключается к Quotes WebSocket
-    // Quotes сервис сам отправляет данные напрямую клиентам
-    // PriceService теперь использует ТОЛЬКО MongoDB (fallback)
-    
-    console.log('🔌 PriceService: WebSocket подключения отключены (используется Unified Quotes Server)');
-    return;
-    
-    // Старый код (отключен):
+    // WebSocket URLs из env переменных (для Railway) или localhost (для локальной разработки)
     const QUOTES_WS_URL = process.env.QUOTES_WS_URL || 'ws://localhost:8080';
     
     console.log('🔌 PriceService: Инициализация WebSocket подключений...');
@@ -149,7 +142,7 @@ class PriceService {
       const cached = this.priceCache.get(pair);
       if (cached) {
         const age = Date.now() - cached.timestamp;
-        const MAX_CACHE_AGE = 10 * 1000; // 10 секунд
+        const MAX_CACHE_AGE = 1 * 1000; // 🔥 УМЕНЬШЕНО: 1 секунда (было 10) для СВЕЖИХ цен при открытии сделок
         
         if (age < MAX_CACHE_AGE) {
           // Кэш свежий - возвращаем МГНОВЕННО! (~0ms)
@@ -177,7 +170,9 @@ class PriceService {
           .sort({ startTime: -1 }) // OTC использует startTime, не timestamp!
           .limit(1);
         source = 'OTC';
-      } else if (pair.includes('BTC') || pair.includes('ETH') || pair.includes('LTC') || pair.includes('XRP') || pair.includes('ADA') || pair.includes('SOL')) {
+      } else if (pair.includes('BTC') || pair.includes('ETH') || pair.includes('LTC') || 
+                 pair.includes('XRP') || pair.includes('ADA') || pair.includes('SOL') ||
+                 pair.includes('DOT') || pair.includes('MATIC') || pair.includes('AVAX') || pair.includes('LINK')) {
         // Крипто пары
         const cleanPair = pair.replace('/', '-');
         candle = await PolygonCryptoCandle.findOne({ pair: cleanPair })
@@ -196,7 +191,9 @@ class PriceService {
       if (!candle) {
         const hint = pair.includes('OTC') 
           ? 'Убедитесь что OTC listener запущен: npm run otc' 
-          : pair.includes('BTC') || pair.includes('ETH') 
+          : pair.includes('BTC') || pair.includes('ETH') || pair.includes('LTC') || 
+            pair.includes('XRP') || pair.includes('ADA') || pair.includes('SOL') ||
+            pair.includes('DOT') || pair.includes('MATIC') || pair.includes('AVAX') || pair.includes('LINK')
             ? 'Убедитесь что Polygon Crypto listener запущен: npm run polygon-crypto'
             : 'Убедитесь что Polygon listener запущен: npm run polygon';
         throw new Error(`Нет данных для пары ${pair}. ${hint}`);
@@ -288,7 +285,9 @@ class PriceService {
             .limit(1);
           source = 'OTC (fallback - последняя доступная)';
         }
-      } else if (pair.includes('BTC') || pair.includes('ETH') || pair.includes('LTC') || pair.includes('XRP') || pair.includes('ADA') || pair.includes('SOL')) {
+      } else if (pair.includes('BTC') || pair.includes('ETH') || pair.includes('LTC') || 
+                 pair.includes('XRP') || pair.includes('ADA') || pair.includes('SOL') ||
+                 pair.includes('DOT') || pair.includes('MATIC') || pair.includes('AVAX') || pair.includes('LINK')) {
         const cleanPair = pair.replace('/', '-');
         candle = await PolygonCryptoCandle.findOne({
           pair: cleanPair,

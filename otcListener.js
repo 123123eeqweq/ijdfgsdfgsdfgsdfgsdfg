@@ -61,7 +61,34 @@ console.log('Подключение к OTC Relay...\n');
 const ws = new WebSocket(RELAY_URL);
 
 ws.on('open', () => {
-  console.log('✅ Подключено к OTC Relay\n');
+  console.log('✅ Подключено к OTC Relay');
+  
+  // 🏠 ROOM-BASED: Подписываемся на ВСЕ OTC пары
+  const otcPairs = [
+    // Forex OTC
+    'EUR/USD', 'AUD/CAD', 'USD/JPY', 'AUD/JPY', 'GBP/USD',
+    'GBP/CAD', 'EUR/CAD', 'CHF/JPY', 'CAD/CHF', 'USD/CHF',
+    'USD/CAD', 'GBP/AUD', 'AUD/CHF', 'EUR/CHF', 'GBP/CHF',
+    'CAD/JPY', 'EUR/JPY', 'GBP/JPY', 'EUR/GBP', 'AUD/USD',
+    // Crypto OTC
+    'BTC/USD', 'ETH/USD', 'LTC/USD', 'XRP/USD', 'SOL/USD',
+    'ADA/USD', 'DOT/USD', 'MATIC/USD', 'AVAX/USD', 'LINK/USD',
+    // Дополнительные Forex
+    'USD/UAH', 'USD/RUB', 'NZD/USD', 'EUR/AUD', 'NZD/JPY',
+    'AUD/NZD', 'EUR/NZD', 'GBP/NZD', 'NZD/CHF', 'NZD/CAD',
+    'USD/CNY', 'EUR/CNY', 'GBP/CNY', 'USD/INR', 'EUR/INR',
+    'GBP/INR', 'EUR/RUB', 'GBP/RUB', 'EUR/UAH', 'GBP/UAH',
+    'USD/MXN'
+  ];
+  
+  otcPairs.forEach(pair => {
+    ws.send(JSON.stringify({
+      action: 'subscribe',
+      pair: pair
+    }));
+  });
+  
+  console.log('📌 Listener подписался на', otcPairs.length, 'OTC пар для сохранения в БД\n');
 });
 
 ws.on('message', (data) => {

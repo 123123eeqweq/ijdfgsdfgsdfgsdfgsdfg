@@ -13,7 +13,7 @@ const WebSocket = require('ws');
 const fetch = require('node-fetch');
 require('dotenv').config();
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.QUOTES_PORT || process.env.PORT || 3001;
 const POLYGON_API_KEY = process.env.POLYGON_API_KEY;
 
 // WebSocket сервер для клиентов
@@ -73,10 +73,15 @@ function connectPolygonForex() {
             console.log('📡 Polygon Forex: Подписка на 19 Forex пар');
           }
           
-          // Данные свечей - просто ретранслируем как есть!
+          // Данные свечей - форматируем для фронтенда  
           if (msg.ev === 'CAS') {
             console.log('💹 Forex данные:', msg.p, msg.c);
-            broadcastToClients(msg);
+            // Polygon присылает как "C.EUR/USD" или просто пару
+            const formattedMsg = {
+              ...msg,
+              pair: msg.p || msg.pair
+            };
+            broadcastToClients(formattedMsg);
           }
         });
       } catch (err) {
@@ -145,8 +150,9 @@ function connectPolygonCrypto() {
             console.log('📡 Polygon Crypto: Подписка на 10 Crypto пар');
           }
           
-          // Данные свечей - просто ретранслируем как есть!
+          // Данные свечей - отправляем как есть (с дефисом!)
           if (msg.ev === 'XAS') {
+            console.log('💎 Crypto данные:', msg.pair, msg.c);
             broadcastToClients(msg);
           }
         });
@@ -201,6 +207,8 @@ const otcBasePrices = {
 function startOTCGeneration() {
   console.log('✅ OTC генератор запущен для', Object.keys(otcBasePrices).length, 'пар');
   
+  let messageCount = 0;
+  
   setInterval(() => {
     Object.entries(otcBasePrices).forEach(([pair, basePrice]) => {
       // Генерируем случайные изменения ±0.05%
@@ -229,7 +237,13 @@ function startOTCGeneration() {
       
       // Отправляем всем клиентам
       broadcastToClients(otcMsg);
+      messageCount++;
     });
+    
+    // Логируем каждые 5 секунд
+    if (messageCount % 100 === 0) {
+      console.log(`💹 OTC: Отправлено ${messageCount} сообщений, подключено ${clients.size} клиентов`);
+    }
   }, 1000); // Каждую секунду
 }
 
@@ -237,14 +251,25 @@ function startOTCGeneration() {
 // 🔥 BROADCAST функция
 // ============================================
 
+let broadcastCount = 0;
+
 function broadcastToClients(message) {
   const data = JSON.stringify(message);
   
+  let sentCount = 0;
   clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(data);
+      sentCount++;
     }
   });
+  
+  broadcastCount++;
+  
+  // Логируем каждые 50 сообщений
+  if (broadcastCount % 50 === 0) {
+    console.log(`📤 Broadcast: ${broadcastCount} сообщений отправлено ${sentCount} клиентам (последнее: ${message.ev})`);
+  }
 }
 
 // ============================================
@@ -252,19 +277,24 @@ function broadcastToClients(message) {
 // ============================================
 
 wss.on('connection', (ws) => {
-  console.log('👤 Новый клиент подключился. Всего:', clients.size + 1);
   clients.add(ws);
+  console.log('👤 Новый клиент подключился. Всего клиентов:', clients.size);
   
   // Отправляем статус
   ws.send(JSON.stringify({
     ev: 'status',
     message: 'Подключено к Unified Quotes Server',
-    types: ['OTC', 'CAS', 'XAS']
+    types: ['OTC', 'CAS', 'XAS'],
+    sources: {
+      forex: polygonForexWs?.readyState === 1,
+      crypto: polygonCryptoWs?.readyState === 1,
+      otc: true
+    }
   }));
   
   ws.on('close', () => {
     clients.delete(ws);
-    console.log('👋 Клиент отключился. Осталось:', clients.size);
+    console.log('👋 Клиент отключился. Осталось клиентов:', clients.size);
   });
   
   ws.on('error', (err) => {
