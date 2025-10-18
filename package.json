@@ -22,7 +22,10 @@
     "otc:dev": "nodemon otcListener.js",
     "otc-relay": "node otcRelay.js",
     "otc-relay:dev": "nodemon otcRelay.js",
-    "add-balance": "node addBalance.js"
+    "add-balance": "node addBalance.js",
+    "render:polygon": "concurrently \"npm run relay\" \"npm run polygon\"",
+    "render:crypto": "concurrently \"npm run crypto-relay\" \"npm run polygon-crypto\"",
+    "render:otc": "concurrently \"npm run otc-relay\" \"npm run otc\""
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

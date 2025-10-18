@@ -31,10 +31,10 @@ class PriceService {
    * 🚀 НОВОЕ: Инициализация WebSocket подключений для real-time цен
    */
   initializeWebSockets() {
-    // WebSocket URLs для разных источников (внутренние порты для Nginx proxy)
-    const POLYGON_WS_URL = process.env.POLYGON_WS_URL || 'ws://localhost:18080';
-    const CRYPTO_WS_URL = process.env.CRYPTO_WS_URL || 'ws://localhost:18081';
-    const OTC_WS_URL = process.env.OTC_WS_URL || 'ws://localhost:18082';
+    // WebSocket URLs для разных источников (для Render используй env переменные)
+    const POLYGON_WS_URL = process.env.POLYGON_WS_URL || 'ws://localhost:8080';
+    const CRYPTO_WS_URL = process.env.CRYPTO_WS_URL || 'ws://localhost:8081';
+    const OTC_WS_URL = process.env.OTC_WS_URL || 'ws://localhost:8082';
     
     console.log('🔌 PriceService: Инициализация WebSocket подключений...');
     console.log(`   📡 Polygon Forex: ${POLYGON_WS_URL}`);
