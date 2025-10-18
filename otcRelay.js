@@ -3,7 +3,7 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const WS_PORT = process.env.PORT || 8082;
+const WS_PORT = process.env.OTC_WS_PORT || 8082;
 
 // Создаём WebSocket сервер (ретранслятор)
 const wss = new WebSocket.Server({ port: WS_PORT });
