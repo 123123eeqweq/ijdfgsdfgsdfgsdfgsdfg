@@ -40,7 +40,6 @@ if (require.main === module) {
   // Создаем WebSocket сервер
   wss = new WebSocket.Server({ 
     port: PORT,
-    host: '0.0.0.0',
     clientTracking: true 
   });
 
