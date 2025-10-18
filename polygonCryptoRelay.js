@@ -5,7 +5,7 @@ dotenv.config();
 
 const POLYGON_KEY = process.env.POLYGON_API_KEY || 'OCt3_VBXxYIKWKSRWNaJk_yquKzcW5UC';
 const POLYGON_WS_URL = 'wss://socket.polygon.io/crypto';
-const WS_PORT = 8081; // Отдельный порт для крипты
+const WS_PORT = 18081; // Отдельный порт для крипты
 
 // Подключение к Polygon (единственное!)
 let polygonWs = null;

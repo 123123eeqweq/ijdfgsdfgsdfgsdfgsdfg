@@ -9,7 +9,7 @@ dotenv.config();
 // MongoDB подключение
 const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = process.env.DB_NAME || 'vsepoluchitsa_db';
-const RELAY_URL = process.env.QUOTES_WS_URL || 'ws://localhost:8080';
+const RELAY_URL = process.env.QUOTES_WS_URL || 'ws://localhost:18080';
 
 // 🔥 КРИТИЧНО: Валидация данных от Polygon
 function validateCandleData(msg) {

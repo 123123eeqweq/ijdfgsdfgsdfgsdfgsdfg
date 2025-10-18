@@ -5,7 +5,7 @@ dotenv.config();
 
 const POLYGON_KEY = process.env.POLYGON_API_KEY || 'OCt3_VBXxYIKWKSRWNaJk_yquKzcW5UC';
 const POLYGON_WS_URL = 'wss://socket.polygon.io/forex';
-const WS_PORT = 8080;
+const WS_PORT = 18080;
 
 // Подключение к Polygon (единственное!)
 let polygonWs = null;

@@ -31,14 +31,18 @@ class PriceService {
    * 🚀 НОВОЕ: Инициализация WebSocket подключений для real-time цен
    */
   initializeWebSockets() {
-    // WebSocket URLs из env переменных (для Railway) или localhost (для локальной разработки)
-    const QUOTES_WS_URL = process.env.QUOTES_WS_URL || 'ws://localhost:8080';
+    // WebSocket URLs для разных источников (внутренние порты для Nginx proxy)
+    const POLYGON_WS_URL = process.env.POLYGON_WS_URL || 'ws://localhost:18080';
+    const CRYPTO_WS_URL = process.env.CRYPTO_WS_URL || 'ws://localhost:18081';
+    const OTC_WS_URL = process.env.OTC_WS_URL || 'ws://localhost:18082';
     
     console.log('🔌 PriceService: Инициализация WebSocket подключений...');
-    console.log(`   📡 Quotes WebSocket: ${QUOTES_WS_URL}`);
+    console.log(`   📡 Polygon Forex: ${POLYGON_WS_URL}`);
+    console.log(`   📡 Polygon Crypto: ${CRYPTO_WS_URL}`);
+    console.log(`   📡 OTC: ${OTC_WS_URL}`);
     
-    // OTC WebSocket - все идут через один Quotes сервис
-    this.connectToWebSocket('otc', QUOTES_WS_URL, (message) => {
+    // OTC WebSocket
+    this.connectToWebSocket('otc', OTC_WS_URL, (message) => {
       if (message.ev === 'OTC' && message.pair && message.c) {
         // Кэшируем как "EUR/USD OTC"
         const cacheKey = `${message.pair} OTC`;
@@ -50,8 +54,8 @@ class PriceService {
       }
     });
 
-    // Polygon Forex WebSocket - все идут через один Quotes сервис
-    this.connectToWebSocket('polygon', QUOTES_WS_URL, (message) => {
+    // Polygon Forex WebSocket
+    this.connectToWebSocket('polygon', POLYGON_WS_URL, (message) => {
       if (message.ev === 'CAS' && message.pair && message.c) {
         // Polygon приходит как "EURUSD" → кэшируем как "EUR/USD"
         const formattedPair = this.formatPolygonPair(message.pair);
@@ -63,8 +67,8 @@ class PriceService {
       }
     });
 
-    // Polygon Crypto WebSocket - все идут через один Quotes сервис
-    this.connectToWebSocket('polygonCrypto', QUOTES_WS_URL, (message) => {
+    // Polygon Crypto WebSocket
+    this.connectToWebSocket('polygonCrypto', CRYPTO_WS_URL, (message) => {
       if (message.ev === 'XAS' && message.pair && message.c) {
         // Crypto приходит как "BTC-USD" → кэшируем как "BTC/USD"
         const formattedPair = message.pair.replace('-', '/');
