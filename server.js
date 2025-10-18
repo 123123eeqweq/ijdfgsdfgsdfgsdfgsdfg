@@ -199,10 +199,10 @@ app.get('/api/health', (req, res) => {
 });
 
 // Запуск сервера
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Backend server is running on port ${PORT}`);
-  console.log(`📡 API available at: http://localhost:${PORT}`);
-  console.log(`🔍 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`📡 API available at: http://0.0.0.0:${PORT}`);
+  console.log(`🔍 Health check: http://0.0.0.0:${PORT}/api/health`);
 });
 
 // 🛑 Graceful shutdown

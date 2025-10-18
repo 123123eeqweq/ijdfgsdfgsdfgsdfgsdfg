@@ -12,7 +12,7 @@ let polygonWs = null;
 let isPolygonConnected = false;
 
 // Создаём наш WebSocket сервер (ретранслятор)
-const wss = new WebSocket.Server({ port: WS_PORT });
+const wss = new WebSocket.Server({ port: WS_PORT, host: '0.0.0.0' });
 
 // 🏠 ROOM-BASED АРХИТЕКТУРА
 const clients = new Set();
