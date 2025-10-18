@@ -112,11 +112,6 @@ ws.on('message', (data) => {
               candleHistory.length = MAX_HISTORY_SIZE;
             }
             
-            // Минимальный вывод закрытой свечи
-            const time = new Date(closedCandle.startTime).toLocaleTimeString('ru-RU');
-            const direction = closedCandle.close >= closedCandle.open ? '▲' : '▼';
-            console.log(`[${pairName}] ${time} ${direction} O:${closedCandle.open.toFixed(2)} H:${closedCandle.high.toFixed(2)} L:${closedCandle.low.toFixed(2)} C:${closedCandle.close.toFixed(2)} V:${closedCandle.volume.toFixed(4)}`);
-            
             // Закрываем свечу в БД (isClosed: true)
             PolygonCryptoCandle.updateOne(
               { pair: closedCandle.pair, startTime: closedCandle.startTime },

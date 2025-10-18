@@ -124,11 +124,6 @@ ws.on('message', (data) => {
               candleHistory.length = MAX_HISTORY_SIZE;
             }
             
-            // Минимальный вывод закрытой свечи
-            const time = new Date(closedCandle.startTime).toLocaleTimeString('ru-RU');
-            const direction = closedCandle.close >= closedCandle.open ? '▲' : '▼';
-            console.log(`[${pairName} OTC] ${time} ${direction} O:${closedCandle.open.toFixed(5)} H:${closedCandle.high.toFixed(5)} L:${closedCandle.low.toFixed(5)} C:${closedCandle.close.toFixed(5)} V:${closedCandle.volume.toFixed(0)}`);
-            
             // Закрываем свечу в БД (isClosed: true)
             OtcCandle.updateOne(
               { pair: closedCandle.pair, startTime: closedCandle.startTime },
