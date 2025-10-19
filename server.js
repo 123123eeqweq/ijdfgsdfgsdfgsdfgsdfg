@@ -62,6 +62,110 @@ app.post('/api/restore-demo-balance', verifyToken, async (req, res) => {
   }
 });
 
+// 🔥 ПОПОЛНЕНИЕ СЧЕТА
+app.post('/api/deposit', verifyToken, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { method, amount, currency } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID required' });
+    }
+    
+    if (!method || !amount || !currency) {
+      return res.status(400).json({ error: 'Method, amount and currency required' });
+    }
+    
+    if (amount < 10) {
+      return res.status(400).json({ error: 'Minimum deposit amount is $10' });
+    }
+
+    const User = require('./models/User');
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Обновляем баланс пользователя
+    const newBalance = (user.realBalance || 0) + amount;
+    const result = await User.updateOne(
+      { _id: userId },
+      { $set: { realBalance: newBalance } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(500).json({ error: 'Failed to update balance' });
+    }
+
+    console.log(`💰 Пополнение: ${currency.toUpperCase()} ${amount} через ${method} для пользователя ${userId}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Successfully deposited ${currency.toUpperCase()} ${amount} via ${method}`,
+      newBalance: newBalance,
+      amount: amount
+    });
+  } catch (error) {
+    console.error('Error processing deposit:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 🔥 ВЫВОД СРЕДСТВ
+app.post('/api/withdraw', verifyToken, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { method, amount, currency } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID required' });
+    }
+    
+    if (!method || !amount || !currency) {
+      return res.status(400).json({ error: 'Method, amount and currency required' });
+    }
+    
+    if (amount < 50) {
+      return res.status(400).json({ error: 'Minimum withdrawal amount is $50' });
+    }
+
+    const User = require('./models/User');
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    if (amount > (user.realBalance || 0)) {
+      return res.status(400).json({ error: 'Insufficient funds' });
+    }
+    
+    // Обновляем баланс пользователя
+    const newBalance = (user.realBalance || 0) - amount;
+    const result = await User.updateOne(
+      { _id: userId },
+      { $set: { realBalance: newBalance } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(500).json({ error: 'Failed to update balance' });
+    }
+
+    console.log(`💸 Вывод: ${currency.toUpperCase()} ${amount} через ${method} для пользователя ${userId}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Successfully withdrawn ${currency.toUpperCase()} ${amount} via ${method}`,
+      newBalance: newBalance,
+      amount: amount
+    });
+  } catch (error) {
+    console.error('Error processing withdrawal:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // 🚀 НОВОЕ: Эндпоинт для мониторинга PriceService кэша
 const PriceService = require('./services/PriceService');
 app.get('/api/price-cache-stats', (req, res) => {
